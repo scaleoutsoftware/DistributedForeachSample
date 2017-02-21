@@ -5,5 +5,5 @@ This sample illustrates the basic usage of ScaleOut's distributed [ForEach](http
 ## Prerequisties
 
  - .NET 4.6.2 or higher.
- - ScaleOut StateServer (the utility may be run directly on a ScaleOut host or on a system with ScaleOut's remote client libraries installed).
+ - ScaleOut ComputeServer (the utility may be run directly on a ScaleOut host or on a system with ScaleOut's remote client libraries installed).
 
