@@ -62,6 +62,8 @@ namespace DistributedForeachSample
 
             RunParallelAnalysis(carts);
             RunDistributedAnalysis(carts);
+            RunDistributedAnalysisMin20(carts);
+            RunDistributedAnalysisViaPMI(carts);
         }
 
         /// <summary>
@@ -141,6 +143,101 @@ namespace DistributedForeachSample
                     result1.numCarts += result2.numCarts;
                     return result1;
                 });
+
+            float resultPct = (float)finalResult.numMatches / finalResult.numCarts * 100;
+            Console.WriteLine($"{resultPct:N1} percent of carts contain {productName}");
+        }
+
+
+        /// <summary>
+        /// Run shopping cart analysis on ScaleOut's distributed data grid,
+        /// only considering carts whose value is at least $20.
+        /// </summary>
+        /// <param name="collection">Collection of shopping carts.</param>
+        /// <remarks>
+        /// Filtering for with a LINQ .Where() call is performed in the ScaleOut service
+        /// when an object's property is marked with a [SossIndex] attribute
+        /// (like ShoppingCart.TotalValue, in this case). You can reduce deserialization
+        /// overhead during ForEach analysis by filtering as much as possible in the
+        /// storage engine.
+        /// </remarks>
+        static void RunDistributedAnalysisMin20(IEnumerable<ShoppingCart> collection)
+        {
+            // Add carts to the distributed data grid.
+            var carts = CacheFactory.GetCache("carts (Min $20 example)");
+            foreach (var cart in collection)
+                carts.Add(cart.CustomerId, cart); // CustomerId serves as key
+
+            string productName = "Acme Snow Globe"; // product to find in the carts
+            Result finalResult;                     // result of the computation
+
+            finalResult = carts.QueryObjects<ShoppingCart>()
+             .Where(cart => cart.TotalValue >= 20.00m)   // filter out low-value carts in the server. 
+             .ForEach(
+                productName,               // parameter
+                () => new Result(),        // result-initialization delegate
+                (cart, pName, result) =>   // body of analysis logic
+                {
+                    // see if the selected product is in the cart:
+                    if (cart.Items.Any(item => item.Name.Equals(pName)))
+                        result.numMatches++;
+
+                    result.numCarts++;
+                    return result;
+                },
+                (result1, result2) =>    // merge logic
+                {
+                    result1.numMatches += result2.numMatches;
+                    result1.numCarts += result2.numCarts;
+                    return result1;
+                });
+
+            float resultPct = (float)finalResult.numMatches / finalResult.numCarts * 100;
+            Console.WriteLine($"{resultPct:N1} percent of carts contain {productName}");
+        }
+
+
+        /// <summary>
+        /// Run shopping cart analysis on ScaleOut's distributed data grid
+        /// using Invoke() and Merge() extension methods.
+        /// </summary>
+        /// <param name="collection">Collection of shopping carts.</param>
+        /// <remarks>
+        /// Using the .Invoke() and .Merge() extension methods on a NamedCache
+        /// can give you the same result as .ForEach(), but with higher
+        /// GC overhead (more temporary Result objects are created).
+        /// </remarks>
+        static void RunDistributedAnalysisViaPMI(IEnumerable<ShoppingCart> collection)
+        {
+            // Add carts to the distributed data grid.
+            var carts = CacheFactory.GetCache("carts (Invoke/Merge analysis)");
+            foreach (var cart in collection)
+                carts.Add(cart.CustomerId, cart); // CustomerId serves as key
+
+            string productName = "Acme Snow Globe"; // product to find in the carts
+            Result finalResult;                     // result of the computation
+
+            finalResult = carts.QueryObjects<ShoppingCart>()
+                .Invoke(
+                    timeout: TimeSpan.FromMinutes(1),
+                    param: productName,
+                    evalMethod: (cart, pName) =>
+                    {
+                        var result = new Result();
+                        result.numCarts = 1;
+                        // see if the selected product is in the cart:
+                        if (cart.Items.Any(item => item.Name.Equals(pName)))
+                            result.numMatches++;
+
+                        return result;
+                    })
+                .Merge(
+                    (result1, result2) =>
+                    {
+                        result1.numMatches += result2.numMatches;
+                        result1.numCarts += result2.numCarts;
+                        return result1;
+                    });
 
             float resultPct = (float)finalResult.numMatches / finalResult.numCarts * 100;
             Console.WriteLine($"{resultPct:N1} percent of carts contain {productName}");

@@ -40,6 +40,8 @@ namespace DistributedForeachSample
     {
         public string CustomerId { get; set; }
         public IList<ShoppingCartItem> Items { get; } = new List<ShoppingCartItem>();
+
+        [SossIndex(HashIndexPriority.HighPriorityHashable)]
         public decimal TotalValue
         {
             get { return Items.Sum((item) => item.Quantity * item.Price); }
