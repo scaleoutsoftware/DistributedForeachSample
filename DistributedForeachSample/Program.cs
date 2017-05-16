@@ -40,30 +40,17 @@ namespace DistributedForeachSample
     /// </summary>
     class Program
     {
+        const int CART_COUNT = 1000;
+
         static void Main(string[] args)
         {
-            var carts = new List<ShoppingCart>();
-            var myCart = new ShoppingCart() { CustomerId = "cust17023" };
-            myCart.Items.Add(new ShoppingCartItem()
-            {
-                Name = "Acme Widget",
-                Price = 199.99m,
-                Quantity = 2
-            });
-
-            myCart.Items.Add(new ShoppingCartItem()
-            {
-                Name = "Acme Snow Globe",
-                Price = 2.99m,
-                Quantity = 400
-            });
-            carts.Add(myCart);
-            // (add more carts here)
+            var carts = new CartGenerator(CART_COUNT).ToList();
+            NamedCache cartCache = StoreLoader.Load(carts);
 
             RunParallelAnalysis(carts);
-            RunDistributedAnalysis(carts);
-            RunDistributedAnalysisMin20(carts);
-            RunDistributedAnalysisViaPMI(carts);
+            RunDistributedAnalysis(cartCache);
+            RunDistributedAnalysisMin20(cartCache);
+            RunDistributedAnalysisViaPMI(cartCache);
         }
 
         /// <summary>
@@ -115,25 +102,20 @@ namespace DistributedForeachSample
         /// Run shopping cart analysis on ScaleOut's distributed data grid.
         /// </summary>
         /// <param name="collection">Collection of shopping carts.</param>
-        static void RunDistributedAnalysis(IEnumerable<ShoppingCart> collection)
+        static void RunDistributedAnalysis(NamedCache cartCache)
         {
-            // Add carts to the distributed data grid.
-            var carts = CacheFactory.GetCache("carts");
-            foreach (var cart in collection)
-                carts.Add(cart.CustomerId, cart); // CustomerId serves as key
-
             string productName = "Acme Snow Globe"; // product to find in the carts
             Result finalResult;                     // result of the computation
 
-            finalResult = carts.QueryObjects<ShoppingCart>().ForEach(
+            finalResult = cartCache.QueryObjects<ShoppingCart>().ForEach(
                 productName,               // parameter
                 () => new Result(),        // result-initialization delegate
                 (cart, pName, result) =>   // body of analysis logic
                 {
                     // see if the selected product is in the cart:
                     if (cart.Items.Any(item => item.Name.Equals(pName)))
-                       result.numMatches++;
-                       
+                        result.numMatches++;
+
                     result.numCarts++;
                     return result;
                 },
@@ -161,17 +143,12 @@ namespace DistributedForeachSample
         /// overhead during ForEach analysis by filtering as much as possible in the
         /// storage engine.
         /// </remarks>
-        static void RunDistributedAnalysisMin20(IEnumerable<ShoppingCart> collection)
+        static void RunDistributedAnalysisMin20(NamedCache cartCache)
         {
-            // Add carts to the distributed data grid.
-            var carts = CacheFactory.GetCache("carts (Min $20 example)");
-            foreach (var cart in collection)
-                carts.Add(cart.CustomerId, cart); // CustomerId serves as key
-
             string productName = "Acme Snow Globe"; // product to find in the carts
             Result finalResult;                     // result of the computation
 
-            finalResult = carts.QueryObjects<ShoppingCart>()
+            finalResult = cartCache.QueryObjects<ShoppingCart>()
              .Where(cart => cart.TotalValue >= 20.00m)   // filter out low-value carts in the server. 
              .ForEach(
                 productName,               // parameter
@@ -193,7 +170,7 @@ namespace DistributedForeachSample
                 });
 
             float resultPct = (float)finalResult.numMatches / finalResult.numCarts * 100;
-            Console.WriteLine($"{resultPct:N1} percent of carts contain {productName}");
+            Console.WriteLine($"{resultPct:N1} percent of $20+ carts contain {productName}");
         }
 
 
@@ -207,17 +184,12 @@ namespace DistributedForeachSample
         /// can give you the same result as .ForEach(), but with higher
         /// GC overhead (more temporary Result objects are created).
         /// </remarks>
-        static void RunDistributedAnalysisViaPMI(IEnumerable<ShoppingCart> collection)
+        static void RunDistributedAnalysisViaPMI(NamedCache cartCache)
         {
-            // Add carts to the distributed data grid.
-            var carts = CacheFactory.GetCache("carts (Invoke/Merge analysis)");
-            foreach (var cart in collection)
-                carts.Add(cart.CustomerId, cart); // CustomerId serves as key
-
             string productName = "Acme Snow Globe"; // product to find in the carts
             Result finalResult;                     // result of the computation
 
-            finalResult = carts.QueryObjects<ShoppingCart>()
+            finalResult = cartCache.QueryObjects<ShoppingCart>()
                 .Invoke(
                     timeout: TimeSpan.FromMinutes(1),
                     param: productName,
