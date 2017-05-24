@@ -95,7 +95,7 @@ namespace DistributedForeachSample
                     {
                         Name = prod.Name,
                         Price = prod.Price,
-                        Quantity = rand.Next(_maxQuantityPerProduct + 1)
+                        Quantity = rand.Next(1, _maxQuantityPerProduct + 1)
                     });
                 }
                 yield return c;
