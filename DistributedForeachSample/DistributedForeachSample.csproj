@@ -9,9 +9,10 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>DistributedForeachSample</RootNamespace>
     <AssemblyName>DistributedForeachSample</AssemblyName>
-    <TargetFrameworkVersion>v4.6.2</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -36,11 +37,11 @@
   <ItemGroup>
     <Reference Include="soss_namedcache, Version=6.0.0.0, Culture=neutral, PublicKeyToken=a1ec0b86f746a476, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>C:\Program Files\ScaleOut_Software\StateServer\DOTNET4.6\soss_namedcache.dll</HintPath>
+      <HintPath>..\..\..\..\Program Files\ScaleOut_Software\StateServer\DOTNET4.7.2\soss_namedcache.dll</HintPath>
     </Reference>
     <Reference Include="soss_svcdotnet, Version=5.0.0.0, Culture=neutral, PublicKeyToken=a1ec0b86f746a476, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>C:\Program Files\ScaleOut_Software\StateServer\DOTNET4.6\soss_svcdotnet.dll</HintPath>
+      <HintPath>..\..\..\..\Program Files\ScaleOut_Software\StateServer\DOTNET4.7.2\soss_svcdotnet.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -59,7 +60,9 @@
     <Compile Include="StoreLoader.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="App.config" />
+    <None Include="App.config">
+      <SubType>Designer</SubType>
+    </None>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
